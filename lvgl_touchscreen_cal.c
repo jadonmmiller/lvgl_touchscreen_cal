@@ -19,7 +19,9 @@ typedef enum {
     TS_CAL_STATE_WAIT_LEAVE
 } tp_cal_state_t;
 
+static void     draw_scr_contents();
 static void		btn_click_action(lv_event_t* event);
+static void     restart_click_action(lv_event_t* event);
 
 static lv_point_t	calibration_points[4];	// top-left, top-right, bottom-right, bottom-left
 static tp_cal_state_t	state;
@@ -58,6 +60,19 @@ void touchscreen_cal_create(void)
     lv_obj_set_layout(cal_screen, 0);  // Disable layout of children. The first registered layout starts at 1
     lv_scr_load(cal_screen);
 
+    // Draw the screen's children
+    draw_scr_contents();
+
+    // Start off the fun with a non-event:
+    state = TS_CAL_STATE_START;
+    btn_click_action(0);
+}
+
+/*
+ * Draw the initial labels, buttons, etc on the screen
+ */
+static void draw_scr_contents(void)
+{
     // A big transparent button to receive clicks:
     big_btn = lv_btn_create(cal_screen);
     lv_obj_remove_style(big_btn, NULL, LV_PART_MAIN | LV_STATE_DEFAULT);
@@ -79,10 +94,6 @@ void touchscreen_cal_create(void)
     lv_style_set_radius(&style_circ, LV_RADIUS_CIRCLE);
     lv_obj_add_style(target, &style_circ, LV_PART_MAIN);
     lv_obj_clear_flag(target, LV_OBJ_FLAG_CLICKABLE);
-
-    // Start off the fun with a non-event:
-    state = TS_CAL_STATE_START;
-    btn_click_action(0);
 }
 
 static void btn_click_action(lv_event_t* event)
@@ -160,7 +171,16 @@ static void btn_click_action(lv_event_t* event)
         anim_y = current_y;
         instructions = "Click the screen\n"
                         "to leave calibration";
-	// REVISIT: We need a button to restart the calibration here
+
+	    // Add a restart calibration button
+        lv_obj_t* btnRestart = lv_btn_create(cal_screen);
+        lv_obj_add_event_cb(btnRestart, restart_click_action, LV_EVENT_CLICKED, NULL);
+        lv_obj_align(btnRestart, LV_ALIGN_CENTER, 0, 50);
+
+        lv_obj_t* label = lv_label_create(btnRestart);
+        lv_label_set_text(label, "Restart Calibration");
+        lv_obj_center(label);
+
         state = TS_CAL_STATE_WAIT_LEAVE;
         printf("Ready to leave calibration\n");
         break;
@@ -199,4 +219,17 @@ static void btn_click_action(lv_event_t* event)
     }
     else
         lv_obj_add_flag(target, LV_OBJ_FLAG_HIDDEN);  // Hide the target, it's not needed any more.
+}
+
+static void restart_click_action(lv_event_t* event)
+{
+        // Delete and redraw the screen
+        lv_obj_clean(cal_screen);
+        draw_scr_contents();
+
+        // Restart the calibration process
+        state = TS_CAL_STATE_START;
+
+        // Call a "non-event" to show the instruction label
+        btn_click_action(0);
 }
